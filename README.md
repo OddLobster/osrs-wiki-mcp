@@ -63,6 +63,17 @@ npm run build
 claude mcp add osrs --scope user -- npx -y @oddlobster/osrs-wiki-mcp
 ```
 
+### Troubleshooting
+
+If the `npx` command doesn't work when adding the MCP server, find your local `npx` binary path and use the full path instead:
+
+```bash
+which npx
+# e.g. /usr/local/bin/npx
+
+claude mcp add osrs --scope user -- /usr/local/bin/npx -y @oddlobster/osrs-wiki-mcp
+```
+
 ## Examples
 
 ### Search the OSRS Wiki
