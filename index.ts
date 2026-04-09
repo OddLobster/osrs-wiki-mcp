@@ -13,10 +13,21 @@ import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
 import { fileURLToPath } from 'url';
+import TurndownService from 'turndown';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DATA_DIR = path.join(__dirname, 'data');
+
+const turndownService = new TurndownService({
+    headingStyle: 'atx',
+    codeBlockStyle: 'fenced',
+});
+turndownService.remove(['script', 'style', 'nav']);
+
+function stripHtmlTags(html: string): string {
+    return html.replace(/<[^>]*>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#039;/g, "'");
+}
 
 const responseToString = (response: any) => {
     const contentText = typeof response === 'string' ? response : JSON.stringify(response);
@@ -252,7 +263,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "osrs_wiki_parse_page",
-                description: "Get the parsed HTML content of a specific OSRS Wiki page.",
+                description: "Get the parsed content of a specific OSRS Wiki page as markdown.",
                 inputSchema: convertZodToJsonSchema(OsrsWikiParsePageSchema),
             },
             {
@@ -356,7 +367,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                         srprop: 'snippet|titlesnippet|sectiontitle'
                     }
                 });
-                return responseToString(searchResponse.data);
+                const searchData = searchResponse.data;
+                if (searchData?.query?.search) {
+                    for (const result of searchData.query.search) {
+                        if (result.snippet) result.snippet = stripHtmlTags(result.snippet);
+                        if (result.titlesnippet) result.titlesnippet = stripHtmlTags(result.titlesnippet);
+                    }
+                }
+                return responseToString(searchData);
 
             case "osrs_wiki_get_page_info":
                 const { titles } = OsrsWikiGetPageInfoSchema.parse(args);
@@ -379,7 +397,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                         formatversion: 2
                     }
                 });
-                return responseToString(parseResponse.data?.parse?.text || 'Page content not found.');
+                const htmlContent = parseResponse.data?.parse?.text;
+                if (!htmlContent) return responseToString('Page content not found.');
+                const markdown = turndownService.turndown(htmlContent);
+                return responseToString(markdown);
 
             case "search_varptypes":
             case "search_varbittypes":
