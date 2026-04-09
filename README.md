@@ -71,7 +71,7 @@ If the `npx` command doesn't work when adding the MCP server, find your local `n
 which npx
 # e.g. /usr/local/bin/npx
 
-claude mcp add osrs --scope user -- /usr/local/bin/npx -y @oddlobster/osrs-wiki-mcp
+claude mcp add osrs --scope user -- /usr/local/opt/node@22/bin/npx -y @oddlobster/osrs-wiki-mcp
 ```
 
 ## Examples
@@ -118,6 +118,9 @@ npm start
 
 # Build the server
 npm run build
+
+# Inspect the server
+npx @modelcontextprotocol/inspector /usr/local/opt/node@22/bin/npx -y @oddlobster/osrs-wiki-mcp
 ```
 
 ## License
