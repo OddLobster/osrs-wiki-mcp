@@ -29,7 +29,7 @@ turndownService.remove(['script', 'style', 'nav']);
 turndownService.addRule('removeNavboxes', {
     filter: (node) => {
         const className = node.getAttribute?.('class') || '';
-        return /\bnavbox\b/.test(className);
+        return /\bnavbox\b|\bnavbar\b/.test(className);
     },
     replacement: () => ''
 });
@@ -38,7 +38,7 @@ turndownService.addRule('removeNavboxes', {
 turndownService.addRule('removeEditSections', {
     filter: (node) => {
         const className = node.getAttribute?.('class') || '';
-        return /\bmw-editsection\b/.test(className);
+        return /\bmw-editsection\b|\beditsection\b/.test(className);
     },
     replacement: () => ''
 });
@@ -46,7 +46,9 @@ turndownService.addRule('removeEditSections', {
 // Remove table of contents
 turndownService.addRule('removeTOC', {
     filter: (node) => {
-        return node.getAttribute?.('id') === 'toc';
+        const id = node.getAttribute?.('id') || '';
+        const className = node.getAttribute?.('class') || '';
+        return id === 'toc' || /\btoc\b/.test(className);
     },
     replacement: () => ''
 });
@@ -56,7 +58,9 @@ turndownService.addRule('removeImages', {
     filter: (node) => {
         const tagName = node.nodeName.toLowerCase();
         if (tagName === 'img') return true;
-        if (tagName === 'span' && node.getAttribute?.('typeof') === 'mw:File') return true;
+        const className = node.getAttribute?.('class') || '';
+        // Match mw-file-description links, mw-file-element images, inventory-image, infobox-image, infobox-bonuses-image
+        if (/\bmw-file-description\b|\bmw-file-element\b|\binventory-image\b|\binfobox-image\b|\binfobox-bonuses-image\b/.test(className)) return true;
         return false;
     },
     replacement: () => ''
@@ -75,16 +79,99 @@ turndownService.addRule('removeHiddenElements', {
 });
 
 function cleanMarkdown(md: string): string {
-    return md
-        // Remove image markdown: [![alt](/images/...)](link) and ![alt](url)
-        .replace(/\[!\[[^\]]*\]\([^)]*\)\]\([^)]*\)/g, '')
-        .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
-        // Remove link title attributes: [text](/w/Page "Page") → [text](/w/Page)
-        .replace(/(\[[^\]]*\]\([^)"]*)\s+"[^"]*"(\))/g, '$1$2')
-        // Remove [v], [t], [e] template nav links
-        .replace(/\[([vte])\]\([^)]*\)/g, '')
+    // Helper to match balanced parentheses in markdown link URLs (handles nested parens like wiki URLs)
+    function stripMarkdownLinks(text: string): string {
+        const result: string[] = [];
+        let i = 0;
+        while (i < text.length) {
+            // Look for ![  (image) or [  (link)
+            if (text[i] === '!' && text[i + 1] === '[') {
+                // Image: ![alt](url) — skip entirely
+                const closeBracket = findClosingBracket(text, i + 1);
+                if (closeBracket !== -1 && text[closeBracket + 1] === '(') {
+                    const closeParen = findClosingParen(text, closeBracket + 1);
+                    if (closeParen !== -1) {
+                        i = closeParen + 1;
+                        continue;
+                    }
+                }
+                result.push(text[i]);
+                i++;
+            } else if (text[i] === '[') {
+                const closeBracket = findClosingBracket(text, i);
+                if (closeBracket !== -1 && text[closeBracket + 1] === '(') {
+                    const closeParen = findClosingParen(text, closeBracket + 1);
+                    if (closeParen !== -1) {
+                        // Extract link text, check if it's a nested image link
+                        const linkText = text.slice(i + 1, closeBracket);
+                        // If the link text itself is an image ![...](...), skip entirely
+                        if (/^!\[/.test(linkText)) {
+                            i = closeParen + 1;
+                            continue;
+                        }
+                        result.push(linkText);
+                        i = closeParen + 1;
+                        continue;
+                    }
+                }
+                result.push(text[i]);
+                i++;
+            } else {
+                result.push(text[i]);
+                i++;
+            }
+        }
+        return result.join('');
+    }
+
+    function findClosingBracket(text: string, start: number): number {
+        // start should be at '['
+        let depth = 0;
+        for (let i = start; i < text.length; i++) {
+            if (text[i] === '[') depth++;
+            else if (text[i] === ']') {
+                depth--;
+                if (depth === 0) return i;
+            }
+        }
+        return -1;
+    }
+
+    function findClosingParen(text: string, start: number): number {
+        // start should be at '('
+        let depth = 0;
+        let inQuote = false;
+        for (let i = start; i < text.length; i++) {
+            if (text[i] === '"' && !inQuote) { inQuote = true; continue; }
+            if (text[i] === '"' && inQuote) { inQuote = false; continue; }
+            if (inQuote) continue;
+            if (text[i] === '(') depth++;
+            else if (text[i] === ')') {
+                depth--;
+                if (depth === 0) return i;
+            }
+        }
+        return -1;
+    }
+
+    return stripMarkdownLinks(md)
+        // Remove [edit | edit source] sections that survived turndown
+        .replace(/\\?\[edit[^\]]*\]/g, '')
+        // Remove reference links like [\[1\]](#cite...)
+        .replace(/\\\[\d+\\\]/g, '')
+        // Remove bold/italic markers
+        .replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1')
+        .replace(/_{1,3}([^_\s][^_]*)_{1,3}/g, '$1')
+        // Remove leftover empty link brackets
+        .replace(/\[\s*\]/g, '')
+        // Remove lines that are just horizontal rules or separators
+        .replace(/^[\s*_-]{3,}$/gm, '')
+        // Remove leftover quoted title text like "Page title")
+        .replace(/\s*"[^"]*"\)/g, ')')
         // Collapse 3+ blank lines to 2
-        .replace(/\n{3,}/g, '\n\n');
+        .replace(/\n{3,}/g, '\n\n')
+        // Trim leading/trailing whitespace
+        .trim();
 }
 
 function stripHtmlTags(html: string): string {
