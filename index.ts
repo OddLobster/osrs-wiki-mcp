@@ -25,6 +25,68 @@ const turndownService = new TurndownService({
 });
 turndownService.remove(['script', 'style', 'nav']);
 
+// Remove navbox tables/divs (footer templates listing all related items)
+turndownService.addRule('removeNavboxes', {
+    filter: (node) => {
+        const className = node.getAttribute?.('class') || '';
+        return /\bnavbox\b/.test(className);
+    },
+    replacement: () => ''
+});
+
+// Remove edit section links
+turndownService.addRule('removeEditSections', {
+    filter: (node) => {
+        const className = node.getAttribute?.('class') || '';
+        return /\bmw-editsection\b/.test(className);
+    },
+    replacement: () => ''
+});
+
+// Remove table of contents
+turndownService.addRule('removeTOC', {
+    filter: (node) => {
+        return node.getAttribute?.('id') === 'toc';
+    },
+    replacement: () => ''
+});
+
+// Remove images and file wrappers
+turndownService.addRule('removeImages', {
+    filter: (node) => {
+        const tagName = node.nodeName.toLowerCase();
+        if (tagName === 'img') return true;
+        if (tagName === 'span' && node.getAttribute?.('typeof') === 'mw:File') return true;
+        return false;
+    },
+    replacement: () => ''
+});
+
+// Remove hidden/navigation-not-searchable elements
+turndownService.addRule('removeHiddenElements', {
+    filter: (node) => {
+        const className = node.getAttribute?.('class') || '';
+        const style = node.getAttribute?.('style') || '';
+        if (/\bnavigation-not-searchable\b/.test(className)) return true;
+        if (/display\s*:\s*none/i.test(style)) return true;
+        return false;
+    },
+    replacement: () => ''
+});
+
+function cleanMarkdown(md: string): string {
+    return md
+        // Remove image markdown: [![alt](/images/...)](link) and ![alt](url)
+        .replace(/\[!\[[^\]]*\]\([^)]*\)\]\([^)]*\)/g, '')
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+        // Remove link title attributes: [text](/w/Page "Page") → [text](/w/Page)
+        .replace(/(\[[^\]]*\]\([^)"]*)\s+"[^"]*"(\))/g, '$1$2')
+        // Remove [v], [t], [e] template nav links
+        .replace(/\[([vte])\]\([^)]*\)/g, '')
+        // Collapse 3+ blank lines to 2
+        .replace(/\n{3,}/g, '\n\n');
+}
+
 function stripHtmlTags(html: string): string {
     return html.replace(/<[^>]*>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#039;/g, "'");
 }
@@ -399,7 +461,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 });
                 const htmlContent = parseResponse.data?.parse?.text;
                 if (!htmlContent) return responseToString('Page content not found.');
-                const markdown = turndownService.turndown(htmlContent);
+                const markdown = cleanMarkdown(turndownService.turndown(htmlContent));
                 return responseToString(markdown);
 
             case "search_varptypes":
