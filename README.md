@@ -1,19 +1,8 @@
-[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/jayarrowz-mcp-osrs-badge.png)](https://mseep.ai/app/jayarrowz-mcp-osrs)
+# OSRS MCP Server
 
-# OSRS MCP Server [![smithery badge](https://smithery.ai/badge/@jayarrowz/mcp-osrs)](https://smithery.ai/server/@jayarrowz/mcp-osrs)
+> Forked from [JayArrowz/mcp-osrs](https://github.com/JayArrowz/mcp-osrs)
 
 MCP Server for interacting with the Old School RuneScape (OSRS) Wiki API and data files. This server provides tools to search the OSRS Wiki and access game data definitions through the Model Context Protocol.
-
-<a href="https://glama.ai/mcp/servers/@JayArrowz/mcp-osrs">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/@JayArrowz/mcp-osrs/badge" alt="OSRS Server MCP server" />
-</a>
-
-![image](https://github.com/user-attachments/assets/da9d1f48-513d-4a1b-a65b-56f8a012fa83)
-
-![image](https://github.com/user-attachments/assets/9e7e4e07-6e47-44f9-ab0c-b3835418bd37)
-
-![image](https://github.com/user-attachments/assets/628f35e1-2e85-42f4-8693-4ef4f16591d4)
-
 
 ## Tools
 
@@ -46,22 +35,20 @@ This server implements the following tools:
 
 ## Installation
 
-### Installing via Smithery
-To install mcp-osrs for Claude Desktop automatically via [Smithery](https://smithery.ai/embed/@jayarrowz/mcp-osrs):
-
-```bash
-npx @smithery/cli@latest install @jayarrowz/mcp-osrs --client claude
-```
-
 ### Prerequisites
 - Node.js (v16 or later)
 - npm or yarn
 
-### Installing the package
+### Using npx
+```bash
+npx -y @oddlobster/osrs-wiki-mcp
+```
+
+### From source
 ```bash
 # Clone the repository
-git clone https://github.com/jayarrowz/mcp-osrs.git
-cd mcp-osrs
+git clone https://github.com/oddlobster/osrs-wiki-mcp.git
+cd osrs-wiki-mcp
 
 # Install dependencies
 npm install
@@ -70,58 +57,34 @@ npm install
 npm run build
 ```
 
-## Usage with Claude Desktop
+## Usage with Claude Code
 
-Add the following to your `claude_desktop_config.json`:
-
-### Using npx
-```json
-{
-  "mcpServers": {
-    "osrs": {
-      "command": "npx",
-      "args": ["-y", "@jayarrowz/mcp-osrs"]
-    }
-  }
-}
+```bash
+claude mcp add osrs --scope user -- npx -y @oddlobster/osrs-wiki-mcp
 ```
-
-### Direct Node.js
-```json
-{
-  "mcpServers": {
-    "osrs": {
-      "command": "node",
-      "args": ["/path/to/mcp-osrs/dist/index.js"]
-    }
-  }
-}
-```
-
-Replace `/path/to/mcp-osrs` with the actual path to your repository.
 
 ## Examples
 
 ### Search the OSRS Wiki
 ```javascript
 // Search for information about the Abyssal whip
-const result = await callTool("osrs_wiki_search", { 
-  search: "Abyssal whip" 
+const result = await callTool("osrs_wiki_search", {
+  search: "Abyssal whip"
 });
 ```
 
 ### Get Page Information
 ```javascript
 // Get information about a specific wiki page
-const pageInfo = await callTool("osrs_wiki_get_page_info", { 
-  titles: "Abyssal_whip" 
+const pageInfo = await callTool("osrs_wiki_get_page_info", {
+  titles: "Abyssal_whip"
 });
 ```
 
 ### Search Game Data
 ```javascript
 // Search for items in the object definitions
-const items = await callTool("search_objtypes", { 
+const items = await callTool("search_objtypes", {
   query: "dragon",
   page: 1,
   pageSize: 10
