@@ -1,6 +1,6 @@
 {
   "name": "@oddlobster/osrs-wiki-mcp",
-  "version": "0.7.5",
+  "version": "0.7.6",
   "description": "MCP server for Old School RuneScape Wiki API",
   "license": "MIT",
   "author": "Jay Arrowz (https://github.com/jayarrowz)",
