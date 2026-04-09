@@ -2,7 +2,12 @@
 
 > Forked from [JayArrowz/mcp-osrs](https://github.com/JayArrowz/mcp-osrs)
 
-MCP Server for interacting with the Old School RuneScape (OSRS) Wiki API and data files. This server provides tools to search the OSRS Wiki and access game data definitions through the Model Context Protocol.
+MCP Server for interacting with the Old School RuneScape (OSRS) Wiki API and game data files through the Model Context Protocol.
+
+## Changes from upstream
+
+- **Wiki pages converted to clean markdown** — Wiki page content is fetched as HTML and converted to readable markdown using [Turndown](https://github.com/mixmark-io/turndown), with aggressive stripping of images, navboxes, edit links, table of contents, and other wiki chrome. The original upstream returns raw HTML.
+- **Search result snippets cleaned** — HTML tags are stripped from wiki search result snippets so they're readable in plain text.
 
 ## Tools
 
@@ -11,22 +16,22 @@ This server implements the following tools:
 ### OSRS Wiki Methods
 1. `osrs_wiki_search` - Search the OSRS Wiki for pages matching a search term
 2. `osrs_wiki_get_page_info` - Get information about specific pages on the OSRS Wiki
-3. `osrs_wiki_parse_page` - Get the parsed HTML content of a specific OSRS Wiki page
+3. `osrs_wiki_parse_page` - Get the parsed content of a specific OSRS Wiki page as clean markdown
 
 ### Game Data Search Methods
-4. `search_varptypes` - Search the varptypes.txt file for player variables (varps) that store player state and progress
-5. `search_varbittypes` - Search the varbittypes.txt file for variable bits (varbits) that store individual bits from varps
-6. `search_iftypes` - Search the iftypes.txt file for interface definitions used in the game's UI
-7. `search_invtypes` - Search the invtypes.txt file for inventory type definitions in the game
-8. `search_loctypes` - Search the loctypes.txt file for location/object type definitions in the game world
-9. `search_npctypes` - Search the npctypes.txt file for NPC (non-player character) definitions
-10. `search_objtypes` - Search the objtypes.txt file for object/item definitions in the game
-11. `search_rowtypes` - Search the rowtypes.txt file for row definitions used in various interfaces
-12. `search_seqtypes` - Search the seqtypes.txt file for animation sequence definitions
-13. `search_soundtypes` - Search the soundtypes.txt file for sound effect definitions in the game
-14. `search_spottypes` - Search the spottypes.txt file for spot animation (graphical effect) definitions
-15. `search_spritetypes` - Search the spritetypes.txt file for sprite image definitions used in the interface
-16. `search_tabletypes` - Search the tabletypes.txt file for interface tab definitions
+4. `search_varptypes` - Search for player variables (varps) that store player state and progress
+5. `search_varbittypes` - Search for variable bits (varbits) that store individual bits from varps
+6. `search_iftypes` - Search for interface definitions used in the game's UI
+7. `search_invtypes` - Search for inventory type definitions in the game
+8. `search_loctypes` - Search for location/object type definitions in the game world
+9. `search_npctypes` - Search for NPC (non-player character) definitions
+10. `search_objtypes` - Search for object/item definitions in the game
+11. `search_rowtypes` - Search for row definitions used in various interfaces
+12. `search_seqtypes` - Search for animation sequence definitions
+13. `search_soundtypes` - Search for sound effect definitions in the game
+14. `search_spottypes` - Search for spot animation (graphical effect) definitions
+15. `search_spritetypes` - Search for sprite image definitions used in the interface
+16. `search_tabletypes` - Search for interface tab definitions
 
 ### Generic Data File Methods
 17. `search_data_file` - Search any file in the data directory for matching entries
@@ -44,23 +49,30 @@ This server implements the following tools:
 npx -y @oddlobster/osrs-wiki-mcp
 ```
 
+### Global install
+```bash
+npm install -g @oddlobster/osrs-wiki-mcp
+```
+
 ### From source
 ```bash
-# Clone the repository
 git clone https://github.com/oddlobster/osrs-wiki-mcp.git
 cd osrs-wiki-mcp
-
-# Install dependencies
 npm install
-
-# Build the package
 npm run build
 ```
 
 ## Usage with Claude Code
 
+### Via npx
 ```bash
 claude mcp add osrs --scope user -- npx -y @oddlobster/osrs-wiki-mcp
+```
+
+### Via global install
+```bash
+npm install -g @oddlobster/osrs-wiki-mcp
+claude mcp add osrs --scope user -- osrs-wiki-mcp
 ```
 
 ### Troubleshooting
@@ -71,42 +83,19 @@ If the `npx` command doesn't work when adding the MCP server, find your local `n
 which npx
 # e.g. /usr/local/bin/npx
 
-claude mcp add osrs --scope user -- /usr/local/opt/node@22/bin/npx -y @oddlobster/osrs-wiki-mcp
+claude mcp add osrs --scope user -- /usr/local/bin/npx -y @oddlobster/osrs-wiki-mcp
 ```
 
 ## Examples
 
-### Search the OSRS Wiki
-```javascript
-// Search for information about the Abyssal whip
-const result = await callTool("osrs_wiki_search", {
-  search: "Abyssal whip"
-});
-```
+Once the MCP server is added, you can ask Claude Code things like:
 
-### Get Page Information
-```javascript
-// Get information about a specific wiki page
-const pageInfo = await callTool("osrs_wiki_get_page_info", {
-  titles: "Abyssal_whip"
-});
-```
-
-### Search Game Data
-```javascript
-// Search for items in the object definitions
-const items = await callTool("search_objtypes", {
-  query: "dragon",
-  page: 1,
-  pageSize: 10
-});
-```
-
-### List Available Data Files
-```javascript
-// Get a list of all data files
-const files = await callTool("list_data_files", {});
-```
+- "What's the item ID for dragon scimitar?"
+- "Search the wiki for Abyssal whip"
+- "What are the stats of the Bandos chestplate?"
+- "Find all NPCs with 'dragon' in their name"
+- "What varbits are related to quest completion?"
+- "List all available game data files"
 
 ## Development
 ```bash
@@ -120,7 +109,7 @@ npm start
 npm run build
 
 # Inspect the server
-npx @modelcontextprotocol/inspector /usr/local/opt/node@22/bin/npx -y @oddlobster/osrs-wiki-mcp
+npx @modelcontextprotocol/inspector node dist/index.js
 ```
 
 ## License
