@@ -227,6 +227,31 @@ const ListDataFilesSchema = z.object({
     fileType: z.string().optional().describe("Optional filter for file type (e.g., 'txt')")
 });
 
+const GetObjectSpawnLocationsSchema = z.object({
+    objectId: z.number().int().describe("The object ID to get spawn locations for"),
+    plane: z.number().int().min(0).max(3).optional().describe("Optional plane/level filter (0-3)"),
+    page: z.number().int().min(1).optional().default(1).describe("Page number for pagination"),
+    pageSize: z.number().int().min(1).max(100).optional().default(10).describe("Number of results per page")
+});
+
+const GetNpcSpawnLocationsSchema = z.object({
+    npcId: z.number().int().describe("The NPC ID to get spawn locations for"),
+    plane: z.number().int().min(0).max(3).optional().describe("Optional plane/level filter (0-3)"),
+    page: z.number().int().min(1).optional().default(1).describe("Page number for pagination"),
+    pageSize: z.number().int().min(1).max(100).optional().default(10).describe("Number of results per page")
+});
+
+const MEJRS_BASE_URL = 'https://raw.githubusercontent.com/mejrs/data_osrs/master';
+
+let npcSpawnCache: any[] | null = null;
+
+async function fetchNpcSpawnData(): Promise<any[]> {
+    if (npcSpawnCache) return npcSpawnCache;
+    const response = await axios.get(`${MEJRS_BASE_URL}/NPCList_OSRS.json`);
+    npcSpawnCache = response.data;
+    return npcSpawnCache!;
+}
+
 function convertZodToJsonSchema(schema: z.ZodType<any>) {
   const jsonSchema = zodToJsonSchema(schema);
   delete jsonSchema.$schema;
@@ -495,6 +520,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                 description: "List available data files in the data directory.",
                 inputSchema: convertZodToJsonSchema(ListDataFilesSchema),
             },
+            {
+                name: "get_object_spawn_locations",
+                description: "Get the world coordinates where a specific game object spawns, using data from the OSRS game cache.",
+                inputSchema: convertZodToJsonSchema(GetObjectSpawnLocationsSchema),
+            },
+            {
+                name: "get_npc_spawn_locations",
+                description: "Get the world coordinates where a specific NPC spawns, using data from the OSRS game cache.",
+                inputSchema: convertZodToJsonSchema(GetNpcSpawnLocationsSchema),
+            },
         ]
     };
 });
@@ -606,6 +641,84 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 const { fileType } = ListDataFilesSchema.parse(args);
                 const files = listDataFiles(fileType);
                 return responseToString({ files, path: DATA_DIR });
+
+            case "get_object_spawn_locations": {
+                const { objectId, plane: objPlane, page: objPage = 1, pageSize: objPageSize = 10 } = GetObjectSpawnLocationsSchema.parse(args);
+                try {
+                    const response = await axios.get(`${MEJRS_BASE_URL}/locations/${objectId}.json`);
+                    let spawns: any[] = response.data;
+
+                    // Convert to world coordinates
+                    spawns = spawns.map((s: any) => ({
+                        worldX: (s.i << 6) + s.x,
+                        worldY: (s.j << 6) + s.y,
+                        plane: s.plane,
+                        type: s.type,
+                        rotation: s.rotation,
+                    }));
+
+                    if (objPlane !== undefined) {
+                        spawns = spawns.filter((s: any) => s.plane === objPlane);
+                    }
+
+                    const totalResults = spawns.length;
+                    const totalPages = Math.ceil(totalResults / objPageSize);
+                    const startIndex = (objPage - 1) * objPageSize;
+                    const paginatedResults = spawns.slice(startIndex, startIndex + objPageSize);
+
+                    return responseToString({
+                        results: paginatedResults,
+                        pagination: {
+                            page: objPage,
+                            pageSize: objPageSize,
+                            totalResults,
+                            totalPages,
+                            hasNextPage: objPage < totalPages,
+                            hasPreviousPage: objPage > 1,
+                        },
+                    });
+                } catch (err: any) {
+                    if (err.response?.status === 404) {
+                        return responseToString({ error: `No spawn data found for object ID ${objectId}` });
+                    }
+                    throw err;
+                }
+            }
+
+            case "get_npc_spawn_locations": {
+                const { npcId, plane: npcPlane, page: npcPage = 1, pageSize: npcPageSize = 10 } = GetNpcSpawnLocationsSchema.parse(args);
+                const allNpcs = await fetchNpcSpawnData();
+                let npcSpawns = allNpcs.filter((n: any) => n.id === npcId);
+
+                if (npcPlane !== undefined) {
+                    npcSpawns = npcSpawns.filter((n: any) => n.p === npcPlane);
+                }
+
+                const npcResults = npcSpawns.map((n: any) => ({
+                    name: n.name,
+                    worldX: n.x,
+                    worldY: n.y,
+                    plane: n.p,
+                    combatLevel: n.combatLevel,
+                }));
+
+                const npcTotalResults = npcResults.length;
+                const npcTotalPages = Math.ceil(npcTotalResults / npcPageSize);
+                const npcStartIndex = (npcPage - 1) * npcPageSize;
+                const npcPaginatedResults = npcResults.slice(npcStartIndex, npcStartIndex + npcPageSize);
+
+                return responseToString({
+                    results: npcPaginatedResults,
+                    pagination: {
+                        page: npcPage,
+                        pageSize: npcPageSize,
+                        totalResults: npcTotalResults,
+                        totalPages: npcTotalPages,
+                        hasNextPage: npcPage < npcTotalPages,
+                        hasPreviousPage: npcPage > 1,
+                    },
+                });
+            }
 
             default:
                 throw new Error(`Unknown tool: ${name}`);
