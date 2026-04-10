@@ -8,6 +8,7 @@ MCP Server for interacting with the Old School RuneScape (OSRS) Wiki API and gam
 
 - **Wiki pages converted to clean markdown** — Wiki page content is fetched as HTML and converted to readable markdown using [Turndown](https://github.com/mixmark-io/turndown), with aggressive stripping of images, navboxes, edit links, table of contents, and other wiki chrome. The original upstream returns raw HTML.
 - **Search result snippets cleaned** — HTML tags are stripped from wiki search result snippets so they're readable in plain text.
+- **NPC & object spawn locations** — Two new tools to look up world coordinates where NPCs and game objects spawn, sourced from the OSRS game cache with optional plane filtering and pagination.
 
 ## Tools
 
@@ -33,10 +34,14 @@ This server implements the following tools:
 15. `search_spritetypes` - Search for sprite image definitions used in the interface
 16. `search_tabletypes` - Search for interface tab definitions
 
+### Spawn Location Methods
+17. `get_npc_spawn_locations` - Get world coordinates where a specific NPC spawns, using data from the OSRS game cache (supports plane filtering and pagination)
+18. `get_object_spawn_locations` - Get world coordinates where a specific game object spawns, using data from the OSRS game cache (supports plane filtering and pagination)
+
 ### Generic Data File Methods
-17. `search_data_file` - Search any file in the data directory for matching entries
-18. `get_file_details` - Get details about a file in the data directory
-19. `list_data_files` - List available data files in the data directory
+19. `search_data_file` - Search any file in the data directory for matching entries
+20. `get_file_details` - Get details about a file in the data directory
+21. `list_data_files` - List available data files in the data directory
 
 ## Installation
 
@@ -96,6 +101,8 @@ Once the MCP server is added, you can ask Claude Code things like:
 - "Find all NPCs with 'dragon' in their name"
 - "What varbits are related to quest completion?"
 - "List all available game data files"
+- "Where does the Goblin (NPC ID 3029) spawn?"
+- "What are the spawn locations for oak trees?"
 
 ## Development
 ```bash
